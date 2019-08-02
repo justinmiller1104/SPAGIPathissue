@@ -1,0 +1,226 @@
+###
+#creates a list of receptors and which transcription factors each connects to after the SPAGI alogrithm
+PathStartsAndEnds <- function(path) {
+  flatthing <- flatten(path)
+  empty <- data.frame(head(flatthing[[1]],1), tail(flatthing[[1]],1),stringsAsFactors = F)
+  
+  
+  for(i in 1:length(flatthing))
+  {
+    
+    empty <- rbind(empty,
+                   c(head(flatthing[[i]],1),
+                     tail(flatthing[[i]],1)))
+    
+    
+  }
+  return(empty)
+}
+###
+
+
+###
+#removes any paths that contain only housekeeper genes
+getridofhouskeepers <- function(pathway.path.all)
+{
+  for(i in 1:length(pathway.path.all))
+  {
+    for(j in 1:length(pathway.path.all[[i]]))
+    {
+      pathway.path.all[[i]] <- map(pathway.path.all[[i]],str_to_upper)
+    }
+  }
+  pathway.path.specific<-list()
+  for(i in 1:length(pathway.path.all)){
+    tmp.path.spec<-lapply(pathway.path.all[[i]], function(x){
+      if(!(all(x %in% housekeeping.gene == "TRUE")))
+        return(x)
+    })
+    pathway.path.specific[[names(pathway.path.all)[i]]]<-tmp.path.spec
+  }
+  ##
+  ##take only the existing pathway paths without null paths
+  pathway.path.specific.clean<-lapply(pathway.path.specific, function(x){
+    return(x[!(sapply(x, is.null))])
+  })
+  ##
+  ##take only the pathways that have at least one path
+  pathway.path.specific.clean.2<-list()
+  for(i in 1:length(pathway.path.specific.clean)){
+    if(length(pathway.path.specific.clean[[i]])!=0){
+      pathway.path.specific.clean.2[[names(pathway.path.specific.clean)[i]]]<-pathway.path.specific.clean[[i]]
+    }
+  }
+  ##
+  ##take only the pathways that have at least one path
+  pathway.path.specific.clean.2<-list()
+  for(i in 1:length(pathway.path.specific.clean)){
+    if(length(pathway.path.specific.clean[[i]])!=0){
+      pathway.path.specific.clean.2[[names(pathway.path.specific.clean)[i]]]<-pathway.path.specific.clean[[i]]
+    }
+  }
+  ##
+  ##Finally return the pathway.path.specific.clean.2 data
+  ##This data will be used as background pathway path data
+  return(pathway.path.specific.clean.2)
+  
+}
+###
+
+###
+#gets the distribution of the length of paths
+distpathlength <- function(pathway)
+{
+  myvector <- c()
+  for(i in 1:length(pathway))
+  {
+    for(j in 1:length(pathway[[i]]))
+    {
+      myvector <- c(myvector,(length(unlist(pathway[[i]][j]))))
+    }
+  }
+  return(myvector)
+}
+###
+
+
+
+###
+#Removes a gene and creates a new SPAGI universe without it. (Must use the format of first letter uppercase and the rest lowercase)
+
+knockout <- function(gene)
+  {
+library(igraph)
+library(dplyr)
+##load the objects
+load("C:/Users/justi/Downloads/all.significant.filtered.ppi.RData")
+load("C:/Users/justi/Downloads/RPs.RData")
+load("C:/Users/justi/Downloads/TFs.RData")
+
+x <- count(all.significant.filtered.ppi, to)
+x <- filter(x, n ==1)
+y <- filter(all.significant.filtered.ppi, from == gene)
+b <- as.character(x$to[x$to %in% y$to])
+
+RPs1 <- as.data.frame(TFs)
+RPs1 <- filter(RPs1,  !(TFs %in% b))
+RPs1 <- filter(RPs1, TFs != gene)
+TFs <- as.matrix(RPs1)
+
+
+x <- count(all.significant.filtered.ppi, from)
+x <- filter(x, n ==1)
+y <- filter(all.significant.filtered.ppi, to == gene)
+a <- as.character(x$from[x$from %in% y$from])
+
+RPs1 <- as.data.frame(RPs)
+RPs1 <- filter(RPs1,  !(RPs %in% a))
+RPs1 <- filter(RPs1, RPs != gene)
+RPs <- as.matrix(RPs1)
+
+all.significant.filtered.ppi <- subset(all.significant.filtered.ppi, from != gene)
+
+all.significant.filtered.ppi <- subset(all.significant.filtered.ppi, to != gene)
+
+
+
+##First calculate the weight from the score as (1000-score)
+edge.weight<- 1000 - all.significant.filtered.ppi$score
+##
+##Now, add the weight column to the data frame
+all.edges<-data.frame(all.significant.filtered.ppi[,1:2], "weight"=edge.weight)
+dim(all.edges)
+#[1] 5124     3
+#make the rownames null
+rownames(all.edges)<-NULL
+##
+g1 <- graph.data.frame(d = all.edges, directed = TRUE)
+#####################################################################################################
+########################
+##Find all simple paths for all source nodes ("RPs") to destination ("TFs")
+##Here by default uses ......(may be depth first search?) for all_simple_path() function
+ll.all.path<-list()
+for(i in 1:length(RPs)){
+#ll.all.path[[RPs[i]]]<-all_simple_paths(g1, from=RPs[i], to = TFs, mode = "out")
+print(RPs[i])
+ll.all.path[[RPs[i]]]<-shortest_paths(g1, from=RPs[i], to = TFs, mode = "out")
+print(i)
+}
+##
+##Finding all the complete (RP-KN-...-KN-TF) paths
+##Here we considered for at least 3 layers
+ll.all.path.complete<-list()
+for(i in 1:length(ll.all.path)){
+#this tmp variable is used for all filtered paths for a pathway
+tmp.individual.pathway.paths.clean.ind<-NULL
+#this loop to check each individual path for a pathway
+for(j in 1:length(ll.all.path[[i]]$vpath)){
+#if(length(unlist(ll.all.path[[i]]$vpath[j])) >= 3)
+if((length(unlist(ll.all.path[[i]]$vpath[j])) >= 3))
+tmp.individual.pathway.paths.clean.ind<-c(tmp.individual.pathway.paths.clean.ind, j)
+}
+#this combines all the filtered paths for a pathway to the respective pathway
+ll.all.path.complete[[names(ll.all.path)[i]]]<-ll.all.path[[i]]$vpath[tmp.individual.pathway.paths.clean.ind]
+}
+##
+##take only the pathways that have at least one complete path
+ll.all.path.complete.exist<-list()
+for(i in 1:length(ll.all.path.complete)){
+if(length(ll.all.path.complete[[i]])!=0){
+ll.all.path.complete.exist[[names(ll.all.path.complete)[i]]]<-ll.all.path.complete[[i]]
+}
+}
+##
+#####New
+##get only the pathway path elements, i.e., the names
+pathway.path<-list()
+for(i in 1:length(ll.all.path.complete.exist)){
+tmp.pathway.path<-lapply(ll.all.path.complete.exist[[i]], function(x){return(names(x))})
+pathway.path[[names(ll.all.path.complete.exist)[i]]]<-tmp.pathway.path
+}
+##
+length(pathway.path)
+#[1] 256
+#####
+##get the names of the pathways and their number of paths
+pathway.path.count<-lapply(pathway.path, function(x){
+tmp.pathway.length<-length(x)
+names(tmp.pathway.length)<-names(x)
+return(tmp.pathway.length)
+})
+##
+do.call(sum, lapply(pathway.path.count, unlist))
+
+return(pathway.path)
+}
+
+
+
+
+## James' version of the identify_active_pathway_path function 
+identify_active_pathway_path <- function(pathway.path, processed.query.data) {
+  # A note on my (James) change here:  
+  # The previous version of this function exhibited an unexpected/undocumented
+  # behaviour in that it would return 1 list of active proteins for each column
+  # in the original (non-processed RNA data). An exception to this behaviour
+  # was when the columns were given the same name (as with the ROR1.data) in
+  # which only one list of proteins was returned. This new version of the
+  # function does not allow this silent combination (although as a result of
+  # this, some of the behaviours regarding the ROR1 example may change).
+
+  gene_names <- processed.query.data %>%  
+    map(~sort(stringr::str_to_upper(names(.x))))
+   
+  pb <- progress::progress_bar$new(total = length(processed.query.data)*length(pathway.path))
+   
+  processed.query.data %>%  
+    purrr::map(~sort(stringr::str_to_upper(names(.x)))) %>%  
+    purrr::map(function(names){
+      pathway.path %>%  
+        purrr::keep(~{
+          pb$tick()
+          all(data.table::`%chin%`(.x, names))
+        })
+    })
+} 
+```
