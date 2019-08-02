@@ -1,0 +1,56 @@
+#Load libraries used
+library(spagi)
+library(tidyverse)
+library(ggplot2)
+
+
+###loads the two pathway universes one with ADCY1 and one without
+load("C:/Users/justi/Downloads/newpath.RData")
+noadcy1 <- knockout("Adcy1")
+
+
+### remove all of the paths that only include housekeepers in each pathway universe
+newspagi <- getridofhouskeepers(newpath)
+noadcy1spagi <- getridofhouskeepers(noadcy1)
+
+###get and clean Hoang data
+hoangdata <- read.csv("C:/Users/justi/Downloads/Hoang_LEC_LF_expressed_MO'C edits.csv")
+hoangdata1 <- hoangdata[,1]
+hoangdata <- hoangdata[,2:4]
+rownames(hoangdata) <- hoangdata1
+
+#Use the SPAGI algorithm with the Hoang data on each universe
+hoang.active.pathwaynew <- identify_active_pathway_path(pathway.path = flatten(newspagi), processed.query.data = hoang.processed.data)
+
+hoang.active.pathwayadcy1 <-identify_active_pathway_path(pathway.path = flatten(noadcy1spagi), processed.query.data = hoang.processed.data)
+
+###
+#prints out paths that have the receptor S1PR5 from SPAGI universe without any paths removed
+b <- 1
+for(i in 1:length(hoang.active.pathwaynew$Hoang_LEC))
+{
+  if(head(hoang.active.pathwaynew$Hoang_LEC[[i]],1) == "S1PR5")
+  {
+    print(hoang.active.pathwaynew$Hoang_LEC[[i]])
+    #print(b)
+    #b <- b+1
+  }
+  
+  b <- b+1
+}
+
+
+###
+#prints paths that have the receptor S1PR5 from SPAGI universe with ADCY1 removed
+b <- 1
+for(i in 1:length(hoang.active.pathwayexample$Hoang_LEC))
+{
+  if(head(hoang.active.pathwayexample$Hoang_LEC[[i]],1)== "S1PR5")
+  {
+    print(hoang.active.pathwayexample$Hoang_LEC[[i]])
+    
+    
+  }
+  b <- b+1
+}
+
