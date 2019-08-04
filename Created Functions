@@ -143,7 +143,7 @@ ll.all.path<-list()
 for(i in 1:length(RPs)){
 #ll.all.path[[RPs[i]]]<-all_simple_paths(g1, from=RPs[i], to = TFs, mode = "out")
 print(RPs[i])
-ll.all.path[[RPs[i]]]<-shortest_paths(g1, from=RPs[i], to = TFs, mode = "out")
+ll.all.path[[RPs[i]]]<-all_shortest_paths(g1, from=RPs[i], to = TFs, mode = "out")
 print(i)
 }
 ##
@@ -154,13 +154,13 @@ for(i in 1:length(ll.all.path)){
 #this tmp variable is used for all filtered paths for a pathway
 tmp.individual.pathway.paths.clean.ind<-NULL
 #this loop to check each individual path for a pathway
-for(j in 1:length(ll.all.path[[i]]$vpath)){
+for(j in 1:length(ll.all.path[[i]]$res)){
 #if(length(unlist(ll.all.path[[i]]$vpath[j])) >= 3)
-if((length(unlist(ll.all.path[[i]]$vpath[j])) >= 3))
+if((length(unlist(ll.all.path[[i]]$res[j])) >= 3))
 tmp.individual.pathway.paths.clean.ind<-c(tmp.individual.pathway.paths.clean.ind, j)
 }
 #this combines all the filtered paths for a pathway to the respective pathway
-ll.all.path.complete[[names(ll.all.path)[i]]]<-ll.all.path[[i]]$vpath[tmp.individual.pathway.paths.clean.ind]
+ll.all.path.complete[[names(ll.all.path)[i]]]<-ll.all.path[[i]]$res[tmp.individual.pathway.paths.clean.ind]
 }
 ##
 ##take only the pathways that have at least one complete path
@@ -193,7 +193,6 @@ do.call(sum, lapply(pathway.path.count, unlist))
 
 return(pathway.path)
 }
-
 
 
 
